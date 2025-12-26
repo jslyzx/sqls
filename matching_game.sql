@@ -16,10 +16,167 @@ CREATE DATABASE /*!32312 IF NOT EXISTS*/`matching_game` /*!40100 DEFAULT CHARACT
 
 USE `matching_game`;
 
-/*Table structure for table `blank_items` */
+
+DROP TABLE IF EXISTS `papers`;
+
+CREATE TABLE `papers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `grade` enum('grade1','grade2','grade3','grade4','grade5','grade6') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `subject` enum('math','chinese','english','science') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `total_points` int(11) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+DROP TABLE IF EXISTS `poems`;
+
+CREATE TABLE `poems` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '诗题',
+  `author` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '作者',
+  `dynasty` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '朝代',
+  `genre` enum('五言绝句','七言绝句','五言律诗','七言律诗','其他') COLLATE utf8mb4_unicode_ci DEFAULT '其他' COMMENT '体裁',
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '诗文全文（整首存储）',
+  `content_lines` json DEFAULT NULL COMMENT '按句拆分后的JSON数组，便于前端展示',
+  `is_active` tinyint(1) DEFAULT '1' COMMENT '是否启用',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_title` (`title`),
+  KEY `idx_author` (`author`),
+  KEY `idx_dynasty` (`dynasty`),
+  KEY `idx_genre` (`genre`),
+  KEY `idx_active` (`is_active`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='古诗表';
+
+
+
+DROP TABLE IF EXISTS `questions`;
+
+CREATE TABLE `questions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '题目标题',
+  `description` text COLLATE utf8mb4_unicode_ci COMMENT '题目说明',
+  `difficulty_level` enum('easy','medium','hard','error_prone') COLLATE utf8mb4_unicode_ci DEFAULT 'easy' COMMENT '难度等级：easy=简单, medium=中等, hard=困难, error_prone=易错题',
+  `grade` enum('grade1','grade2','grade3','grade4','grade5','grade6') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'grade1' COMMENT '年级：grade1=一年级, grade2=二年级, grade3=三年级, grade4=四年级, grade5=五年级, grade6=六年级',
+  `subject` enum('math','chinese','english','science') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'math' COMMENT '科目：math=数学, chinese=语文, english=英语, science=科学',
+  `hint_enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `hint_text` text COLLATE utf8mb4_unicode_ci,
+  `image_enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `image_url` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `draft_enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `poem_id` int(11) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT '1' COMMENT '是否启用',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `question_type` enum('matching','choice','poem_fill','fill_blank') COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_grade` (`grade`),
+  KEY `idx_subject` (`subject`),
+  KEY `fk_questions_poem` (`poem_id`),
+  CONSTRAINT `fk_questions_poem` FOREIGN KEY (`poem_id`) REFERENCES `poems` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=87 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目主表';
+
+DROP TABLE IF EXISTS `word_plans`;
+
+CREATE TABLE `word_plans` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '计划名称',
+  `description` text COLLATE utf8mb4_unicode_ci COMMENT '计划描述',
+  `mode` enum('flash-card','spelling') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'flash-card' COMMENT '答题模式',
+  `status` enum('active','inactive') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'inactive' COMMENT '启用状态',
+  `target_word_count` int(11) NOT NULL DEFAULT '10' COMMENT '目标单词数量',
+  `daily_word_count` int(11) NOT NULL DEFAULT '5' COMMENT '每日学习单词数量',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `choice_options`;
+
+CREATE TABLE `choice_options` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `question_id` int(11) NOT NULL COMMENT '所属题目ID',
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '选项内容',
+  `is_correct` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否为正确答案',
+  `display_order` int(11) DEFAULT '0' COMMENT '显示顺序',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_question_id` (`question_id`),
+  CONSTRAINT `choice_options_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='选择题选项表';
+
+DROP TABLE IF EXISTS `paper_items`;
+
+CREATE TABLE `paper_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `paper_id` int(11) NOT NULL,
+  `question_id` int(11) NOT NULL,
+  `display_order` int(11) DEFAULT '0',
+  `points` int(11) DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_id` (`paper_id`),
+  KEY `idx_question_id` (`question_id`),
+  CONSTRAINT `paper_items_ibfk_1` FOREIGN KEY (`paper_id`) REFERENCES `papers` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `paper_items_ibfk_2` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `exam_sessions`;
+
+CREATE TABLE `exam_sessions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `paper_id` int(11) NOT NULL,
+  `status` enum('created','started','submitted') COLLATE utf8mb4_unicode_ci DEFAULT 'created',
+  `duration_seconds` int(11) DEFAULT '0',
+  `score` int(11) DEFAULT '0',
+  `started_at` timestamp NULL DEFAULT NULL,
+  `submitted_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `paper_id` (`paper_id`),
+  KEY `idx_user_paper` (`user_id`,`paper_id`),
+  CONSTRAINT `exam_sessions_ibfk_1` FOREIGN KEY (`paper_id`) REFERENCES `papers` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `exam_answers`;
+
+CREATE TABLE `exam_answers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `session_id` int(11) NOT NULL,
+  `question_id` int(11) NOT NULL,
+  `answer_json` json NOT NULL,
+  `is_correct` tinyint(1) DEFAULT '0',
+  `points_awarded` int(11) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_session_q` (`session_id`,`question_id`),
+  CONSTRAINT `exam_answers_ibfk_1` FOREIGN KEY (`session_id`) REFERENCES `exam_sessions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `question_items`;
+
+CREATE TABLE `question_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `question_id` int(11) NOT NULL COMMENT '所属题目ID',
+  `content` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '显示内容',
+  `side` enum('left','right') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '所在列：left=左列, right=右列',
+  `match_item_id` int(11) DEFAULT NULL COMMENT '正确匹配的项目ID（指向右列的ID）',
+  `display_order` int(11) DEFAULT '0' COMMENT '显示顺序',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_question_id` (`question_id`),
+  KEY `idx_side` (`side`),
+  CONSTRAINT `question_items_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=799 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目项表';
+
 
 DROP TABLE IF EXISTS `blank_items`;
-
 CREATE TABLE `blank_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `question_id` int(11) NOT NULL,
@@ -33,6 +190,103 @@ CREATE TABLE `blank_items` (
   KEY `fk_blank_items_question` (`question_id`),
   CONSTRAINT `fk_blank_items_question` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+DROP TABLE IF EXISTS `user_answers`;
+
+CREATE TABLE `user_answers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户标识（可以是设备ID或用户名）',
+  `question_id` int(11) NOT NULL COMMENT '题目ID',
+  `is_correct` tinyint(1) NOT NULL COMMENT '是否答对',
+  `attempt_count` int(11) DEFAULT '1' COMMENT '尝试次数',
+  `completed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_question_id` (`question_id`),
+  CONSTRAINT `user_answers_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='答题记录表';
+
+
+/*Data for the table `papers` */
+
+insert  into `papers`(`id`,`title`,`description`,`grade`,`subject`,`total_points`,`created_at`,`updated_at`) values 
+(1,'试卷一','测试组卷功能','grade2','math',15,'2025-11-24 13:35:17','2025-11-24 13:35:21');
+
+
+/*Data for the table `poems` */
+
+insert  into `poems`(`id`,`title`,`author`,`dynasty`,`genre`,`content`,`content_lines`,`is_active`,`created_at`,`updated_at`) values 
+(1,'梅花','王安石','宋','五言绝句','墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。','[\"墙角数枝梅，凌寒独自开\", \"遥知不是雪，为有暗香来\"]',1,'2025-11-13 12:43:01','2025-11-13 12:43:01'),
+(2,'小儿垂钓','胡令能','唐','七言绝句','蓬头稚子学垂纶，侧坐莓苔草映身。路人借问遥招手，怕得鱼惊不应人。','[\"蓬头稚子学垂纶，侧坐莓苔草映身\", \"路人借问遥招手，怕得鱼惊不应人\"]',1,'2025-11-13 13:36:43','2025-11-13 13:36:43'),
+(3,'望庐山瀑布','李白','唐','七言绝句','日照香炉生紫烟，遥看瀑布挂前川。飞流直下三千尺，疑是银河落九天。','[\"日照香炉生紫烟，遥看瀑布挂前川\", \"飞流直下三千尺，疑是银河落九天\"]',1,'2025-11-13 21:05:51','2025-11-13 21:05:51');
+
+
+/*Data for the table `questions` */
+
+insert  into `questions`(`id`,`title`,`description`,`difficulty_level`,`grade`,`subject`,`hint_enabled`,`hint_text`,`image_enabled`,`image_url`,`draft_enabled`,`poem_id`,`is_active`,`created_at`,`updated_at`,`question_type`) values 
+(16,'动物与食物','把动物和它们喜欢吃的食物连起来','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-21 18:20:37','2025-11-13 13:22:58','matching'),
+(17,'颜色与水果','把水果和它们的颜色连起来','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-21 18:20:38','2025-11-13 13:22:58','matching'),
+(18,'数字与数量','把数字和对应数量的物品连起来','medium','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-21 18:20:38','2025-11-13 13:22:58','matching'),
+(19,'几个几与几和几','能正确区分几个几、几和几相加、相乘','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-22 17:29:56','2025-11-13 13:22:58','matching'),
+(20,'计算下面的数学表达式: \\(2x + 3 = 7\\)','选择正确的答案','medium','grade2','math',0,NULL,0,NULL,0,NULL,0,'2025-10-23 10:51:24','2025-11-13 13:22:58','choice'),
+(21,'求下列方程的解: \\(x^2 - 4 = 0\\)','选择所有正确的答案','hard','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-23 10:51:24','2025-11-14 14:18:01','choice'),
+(22,'动词搭配','动词+名词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:28:12','2025-11-13 13:22:58','matching'),
+(23,'形容词搭配','形容词+名词(什么样的什么)','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:30:22','2025-11-13 13:22:58','matching'),
+(24,'量词搭配','选择合适的量词来称呼后面的名词，量词+名词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:34:22','2025-11-13 13:22:58','matching'),
+(25,'近义词','选择意思相近的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:36:17','2025-11-13 13:22:58','matching'),
+(26,'反义词','选择意思相反的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:37:26','2025-11-13 13:22:58','matching'),
+(27,'课文告诉我们什么道理','以下三篇文章分别告诉我们什么道理呢？','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:47:47','2025-11-13 13:22:58','matching'),
+(28,'形容词搭配','用准确的形容词来形容一个事物','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:49:22','2025-11-13 13:22:58','matching'),
+(29,'动作描写','准确描述事物的动作','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:50:28','2025-11-13 13:22:58','matching'),
+(30,'量词搭配','用准确的量词称呼名词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:52:12','2025-11-13 13:22:58','matching'),
+(31,'ABB搭配','ABB式叠词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:55:22','2025-11-13 13:22:58','matching'),
+(32,'形近字辨析','形近字辨析，左右搭配形成词语即可，可以左边字在前，也可以右边字在前','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 17:00:18','2025-11-13 13:22:58','matching'),
+(33,'形近字辨析','把字看仔细','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 17:06:05','2025-11-13 13:22:58','matching'),
+(34,'多音字辨析','把音读准','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 17:10:28','2025-11-13 13:22:58','matching'),
+(44,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:12:22','2025-11-13 13:22:58','matching'),
+(45,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:13:36','2025-11-13 13:22:58','matching'),
+(46,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:14:33','2025-11-13 13:22:58','matching'),
+(47,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:15:59','2025-11-13 13:22:58','matching'),
+(48,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:17:53','2025-11-13 13:22:58','matching'),
+(49,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:19:49','2025-11-13 13:22:58','matching'),
+(50,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:21:06','2025-11-13 13:22:58','matching'),
+(51,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:23:05','2025-11-13 13:22:58','matching'),
+(52,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:25:30','2025-11-13 13:22:58','matching'),
+(53,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:28:30','2025-11-13 13:22:58','matching'),
+(54,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:31:41','2025-11-13 13:22:58','matching'),
+(55,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:33:31','2025-11-13 13:22:58','matching'),
+(56,'多音字辨析','读准字音','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:35:50','2025-11-13 13:22:58','matching'),
+(57,'多音字辨析','读准字音','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:37:43','2025-11-13 13:22:58','matching'),
+(58,'多音字辨析','多音字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:41:28','2025-11-13 13:22:58','matching'),
+(59,'近义词','选择意思相近的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:43:50','2025-11-13 13:22:58','matching'),
+(60,'近义词','选择意思相近的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:46:01','2025-11-13 13:22:58','matching'),
+(61,'反义词','选择意思相反的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:49:00','2025-11-13 13:22:58','matching'),
+(62,'反义词','选择意思相反的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:51:28','2025-11-13 13:22:58','matching'),
+(63,'俗语搭配','俗语搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 18:36:11','2025-11-13 13:22:58','matching'),
+(64,'动词搭配','动词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 18:40:02','2025-11-13 13:22:58','matching'),
+(66,'梅花','梅花','easy','grade2','chinese',0,NULL,0,NULL,0,1,0,'2025-11-13 13:19:20','2025-11-14 14:14:14','poem_fill'),
+(67,'小儿垂钓','小儿垂钓','easy','grade2','chinese',0,NULL,0,NULL,0,2,0,'2025-11-13 13:37:32','2025-11-13 21:04:13','poem_fill'),
+(68,'谁比谁多','小明看了30页书，比弟弟少看6页，问弟弟看了多少页？','easy','grade2','math',1,'求谁就看谁是多还是少，多就加，少就减',0,NULL,1,NULL,0,'2025-11-13 19:32:49','2025-12-21 14:40:26','choice'),
+(69,'代词辨析','正确使用代词','easy','grade2','english',0,'',0,'',0,NULL,1,'2025-11-15 17:50:17','2025-12-21 14:27:44','matching'),
+(70,'代词辨析','正确使用代词','easy','grade2','english',0,NULL,0,NULL,0,NULL,0,'2025-11-15 17:52:02','2025-11-25 22:19:22','matching'),
+(71,'看书问题','小明看一本书，每天看5页，看了6天，问第7天要从第几页开始看？','easy','grade2','math',1,'注意前面几天一共看了多少页？',0,NULL,1,NULL,0,'2025-11-15 19:06:05','2025-11-25 22:19:22','choice'),
+(72,'have got和has got','（） he got a book?','easy','grade2','english',1,'注意三单',0,NULL,0,NULL,0,'2025-11-16 17:04:14','2025-11-25 22:19:22','choice'),
+(73,'THere be有','There () two books on the table.','easy','grade2','english',1,'注意单数还是复数',0,NULL,0,NULL,0,'2025-11-16 17:07:28','2025-11-25 22:19:22','choice'),
+(74,'3乘5','3\\(\\times\\)5表示{_0}个{_1}相加，口诀是{_2}','easy','grade1','math',0,NULL,0,NULL,0,NULL,0,'2025-11-25 22:14:10','2025-12-20 19:15:48','fill_blank'),
+(75,'兔妈妈采蘑菇','兔妈妈采了一篮蘑菇。蘑菇的数量比40多，比50少。平均分给几只小兔，每只小兔分得的数量刚好和小兔的只数同样多。兔妈妈采了{_0}个蘑菇，平均分给{_1}只小兔。','error_prone','grade2','math',0,'',0,'',1,NULL,1,'2025-12-20 19:20:44','2025-12-20 19:21:06','fill_blank'),
+(76,'多音字：mu','多音字辨析，连一连','error_prone','grade2','chinese',0,'',0,'',0,NULL,1,'2025-12-21 11:33:37','2025-12-21 11:36:09','matching'),
+(77,'看电影','某电影院的一个影厅有9排座位，每排有5个座位。二（1）班共有44名学生，2位老师要带他们一起去看电影，请问电影院能坐得下吗？','easy','grade2','math',0,NULL,0,NULL,0,NULL,0,'2025-12-21 14:08:27','2025-12-21 15:11:06','choice'),
+(78,'等量代换','在原始社会，人们使用以物易物的方式交换自己所需要的物资。比如，1头牛可以换4只羊，1只羊可以换3只兔子。想一想，24只兔子可以换{_0}头牛？','easy','grade2','math',1,'先用兔子换羊，再用羊换牛',0,NULL,1,NULL,0,'2025-12-21 14:11:05','2025-12-21 15:10:13','fill_blank'),
+(79,'归一问题','二年级同学参加合唱比赛，要求同学们按照“5男4女”每9人站一排。女生共有32人， 男生共有{_0}人','medium','grade2','math',1,'先求出有几排',0,NULL,1,NULL,1,'2025-12-21 14:23:43','2025-12-21 14:23:43','fill_blank'),
+(80,'数位问题','有一个两位数，两个数位上的数之和为13，个位比十位大3，这个两位数是{_0}','hard','grade2','math',0,NULL,0,NULL,1,NULL,1,'2025-12-21 14:26:51','2025-12-21 14:26:51','fill_blank'),
+(81,'错中求解','一道除法题，除数是9，小乐把被除数十位上的数字和个位上的数字看颠倒了，结果除得的商是4。这道题正确的商应该是{_0}?','hard','grade2','math',0,NULL,0,NULL,1,NULL,1,'2025-12-21 14:58:20','2025-12-21 14:58:20','fill_blank'),
+(82,'乘法口诀','一些苹果，比20多，比25少，正好放了4盘，每盘一样多，这些苹果可能有{_0}个，每盘有{_1}个。','hard','grade2','math',0,NULL,0,NULL,1,NULL,1,'2025-12-21 15:00:53','2025-12-21 15:00:53','fill_blank'),
+(83,'剪绳子','一段12米长的绳子，剪了3次，平均每段长{_0}米。','medium','grade2','math',1,'先求剪成了几段',0,NULL,1,NULL,0,'2025-12-21 15:02:45','2025-12-21 15:10:17','fill_blank'),
+(84,'绳子对折','一根绳子对折再对折后，量得它的长是3厘米，这根绳子原来长{_0}厘米。','hard','grade2','math',0,NULL,0,NULL,1,NULL,0,'2025-12-21 15:04:37','2025-12-21 15:10:19','fill_blank'),
+(85,'简单乘法','动物园观光车乘坐票每人4元，红红和5个好朋友乘坐，一共要花{_0}元。','medium','grade2','math',1,'想一想一共有几个人',0,NULL,1,NULL,0,'2025-12-21 15:06:12','2025-12-21 15:10:21','fill_blank'),
+(86,'绳子对折','一根绳子长48厘米，对折，对折再对折后，每段长{_0}厘米。','medium','grade2','math',0,NULL,0,NULL,1,NULL,0,'2025-12-21 15:07:49','2025-12-21 15:10:22','fill_blank');
+
 
 /*Data for the table `blank_items` */
 
@@ -53,21 +307,7 @@ insert  into `blank_items`(`id`,`question_id`,`idx`,`answer_text`,`hint`,`create
 (16,85,0,'24',NULL,'2025-12-21 15:06:12','2025-12-21 15:06:12'),
 (17,86,0,'6',NULL,'2025-12-21 15:07:50','2025-12-21 15:07:50');
 
-/*Table structure for table `choice_options` */
 
-DROP TABLE IF EXISTS `choice_options`;
-
-CREATE TABLE `choice_options` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `question_id` int(11) NOT NULL COMMENT '所属题目ID',
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '选项内容',
-  `is_correct` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否为正确答案',
-  `display_order` int(11) DEFAULT '0' COMMENT '显示顺序',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_question_id` (`question_id`),
-  CONSTRAINT `choice_options_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='选择题选项表';
 
 /*Data for the table `choice_options` */
 
@@ -99,60 +339,7 @@ insert  into `choice_options`(`id`,`question_id`,`content`,`is_correct`,`display
 (29,77,'能',0,1,'2025-12-21 14:08:27'),
 (30,77,'不能',1,2,'2025-12-21 14:08:27');
 
-/*Table structure for table `choice_options_backup_20251108` */
 
-DROP TABLE IF EXISTS `choice_options_backup_20251108`;
-
-CREATE TABLE `choice_options_backup_20251108` (
-  `id` int(11) NOT NULL DEFAULT '0',
-  `question_id` int(11) NOT NULL COMMENT '所属题目ID',
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '选项内容',
-  `is_correct` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否为正确答案',
-  `display_order` int(11) DEFAULT '0' COMMENT '显示顺序',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-/*Data for the table `choice_options_backup_20251108` */
-
-/*Table structure for table `exam_answers` */
-
-DROP TABLE IF EXISTS `exam_answers`;
-
-CREATE TABLE `exam_answers` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `session_id` int(11) NOT NULL,
-  `question_id` int(11) NOT NULL,
-  `answer_json` json NOT NULL,
-  `is_correct` tinyint(1) DEFAULT '0',
-  `points_awarded` int(11) DEFAULT '0',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_session_q` (`session_id`,`question_id`),
-  CONSTRAINT `exam_answers_ibfk_1` FOREIGN KEY (`session_id`) REFERENCES `exam_sessions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-/*Data for the table `exam_answers` */
-
-/*Table structure for table `exam_sessions` */
-
-DROP TABLE IF EXISTS `exam_sessions`;
-
-CREATE TABLE `exam_sessions` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `paper_id` int(11) NOT NULL,
-  `status` enum('created','started','submitted') COLLATE utf8mb4_unicode_ci DEFAULT 'created',
-  `duration_seconds` int(11) DEFAULT '0',
-  `score` int(11) DEFAULT '0',
-  `started_at` timestamp NULL DEFAULT NULL,
-  `submitted_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `paper_id` (`paper_id`),
-  KEY `idx_user_paper` (`user_id`,`paper_id`),
-  CONSTRAINT `exam_sessions_ibfk_1` FOREIGN KEY (`paper_id`) REFERENCES `papers` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `exam_sessions` */
 
@@ -161,23 +348,6 @@ insert  into `exam_sessions`(`id`,`user_id`,`paper_id`,`status`,`duration_second
 (2,'local-user',1,'started',0,0,'2025-11-24 14:00:10',NULL,'2025-11-24 14:00:10','2025-11-24 14:00:10'),
 (3,'local-user',1,'started',0,0,'2025-11-24 14:00:29',NULL,'2025-11-24 14:00:29','2025-11-24 14:00:29');
 
-/*Table structure for table `paper_items` */
-
-DROP TABLE IF EXISTS `paper_items`;
-
-CREATE TABLE `paper_items` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `paper_id` int(11) NOT NULL,
-  `question_id` int(11) NOT NULL,
-  `display_order` int(11) DEFAULT '0',
-  `points` int(11) DEFAULT '0',
-  PRIMARY KEY (`id`),
-  KEY `idx_paper_id` (`paper_id`),
-  KEY `idx_question_id` (`question_id`),
-  CONSTRAINT `paper_items_ibfk_1` FOREIGN KEY (`paper_id`) REFERENCES `papers` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `paper_items_ibfk_2` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 /*Data for the table `paper_items` */
 
 insert  into `paper_items`(`id`,`paper_id`,`question_id`,`display_order`,`points`) values 
@@ -185,74 +355,10 @@ insert  into `paper_items`(`id`,`paper_id`,`question_id`,`display_order`,`points
 (2,1,68,2,5),
 (3,1,20,3,5);
 
-/*Table structure for table `papers` */
-
-DROP TABLE IF EXISTS `papers`;
-
-CREATE TABLE `papers` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `grade` enum('grade1','grade2','grade3','grade4','grade5','grade6') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `subject` enum('math','chinese','english','science') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `total_points` int(11) DEFAULT '0',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-/*Data for the table `papers` */
-
-insert  into `papers`(`id`,`title`,`description`,`grade`,`subject`,`total_points`,`created_at`,`updated_at`) values 
-(1,'试卷一','测试组卷功能','grade2','math',15,'2025-11-24 13:35:17','2025-11-24 13:35:21');
-
-/*Table structure for table `poems` */
-
-DROP TABLE IF EXISTS `poems`;
-
-CREATE TABLE `poems` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '诗题',
-  `author` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '作者',
-  `dynasty` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '朝代',
-  `genre` enum('五言绝句','七言绝句','五言律诗','七言律诗','其他') COLLATE utf8mb4_unicode_ci DEFAULT '其他' COMMENT '体裁',
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '诗文全文（整首存储）',
-  `content_lines` json DEFAULT NULL COMMENT '按句拆分后的JSON数组，便于前端展示',
-  `is_active` tinyint(1) DEFAULT '1' COMMENT '是否启用',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_title` (`title`),
-  KEY `idx_author` (`author`),
-  KEY `idx_dynasty` (`dynasty`),
-  KEY `idx_genre` (`genre`),
-  KEY `idx_active` (`is_active`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='古诗表';
-
-/*Data for the table `poems` */
-
-insert  into `poems`(`id`,`title`,`author`,`dynasty`,`genre`,`content`,`content_lines`,`is_active`,`created_at`,`updated_at`) values 
-(1,'梅花','王安石','宋','五言绝句','墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。','[\"墙角数枝梅，凌寒独自开\", \"遥知不是雪，为有暗香来\"]',1,'2025-11-13 12:43:01','2025-11-13 12:43:01'),
-(2,'小儿垂钓','胡令能','唐','七言绝句','蓬头稚子学垂纶，侧坐莓苔草映身。路人借问遥招手，怕得鱼惊不应人。','[\"蓬头稚子学垂纶，侧坐莓苔草映身\", \"路人借问遥招手，怕得鱼惊不应人\"]',1,'2025-11-13 13:36:43','2025-11-13 13:36:43'),
-(3,'望庐山瀑布','李白','唐','七言绝句','日照香炉生紫烟，遥看瀑布挂前川。飞流直下三千尺，疑是银河落九天。','[\"日照香炉生紫烟，遥看瀑布挂前川\", \"飞流直下三千尺，疑是银河落九天\"]',1,'2025-11-13 21:05:51','2025-11-13 21:05:51');
 
 /*Table structure for table `question_items` */
 
-DROP TABLE IF EXISTS `question_items`;
 
-CREATE TABLE `question_items` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `question_id` int(11) NOT NULL COMMENT '所属题目ID',
-  `content` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '显示内容',
-  `side` enum('left','right') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '所在列：left=左列, right=右列',
-  `match_item_id` int(11) DEFAULT NULL COMMENT '正确匹配的项目ID（指向右列的ID）',
-  `display_order` int(11) DEFAULT '0' COMMENT '显示顺序',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_question_id` (`question_id`),
-  KEY `idx_side` (`side`),
-  CONSTRAINT `question_items_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=799 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目项表';
 
 /*Data for the table `question_items` */
 
@@ -699,277 +805,6 @@ insert  into `question_items`(`id`,`question_id`,`content`,`side`,`match_item_id
 (796,69,'那个','right',NULL,3,'2025-12-21 14:27:44'),
 (797,69,'那些','right',NULL,4,'2025-12-21 14:27:44'),
 (798,69,'这个','right',NULL,5,'2025-12-21 14:27:44');
-
-/*Table structure for table `question_items_backup_20251108` */
-
-DROP TABLE IF EXISTS `question_items_backup_20251108`;
-
-CREATE TABLE `question_items_backup_20251108` (
-  `id` int(11) NOT NULL DEFAULT '0',
-  `question_id` int(11) NOT NULL COMMENT '所属题目ID',
-  `content` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '显示内容',
-  `side` enum('left','right') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '所在列：left=左列, right=右列',
-  `match_item_id` int(11) DEFAULT NULL COMMENT '正确匹配的项目ID（指向右列的ID）',
-  `display_order` int(11) DEFAULT '0' COMMENT '显示顺序',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-/*Data for the table `question_items_backup_20251108` */
-
-insert  into `question_items_backup_20251108`(`id`,`question_id`,`content`,`side`,`match_item_id`,`display_order`,`created_at`) values 
-(139,23,'大大的','left',147,1,'2025-11-07 16:30:23'),
-(140,23,'雪白的','left',145,2,'2025-11-07 16:30:23'),
-(141,23,'长长的','left',144,3,'2025-11-07 16:30:23'),
-(142,23,'碧绿的','left',146,4,'2025-11-07 16:30:23'),
-(143,23,'粗心的','left',NULL,5,'2025-11-07 16:30:23'),
-(144,23,'小朋友','right',NULL,1,'2025-11-07 16:30:23'),
-(145,23,'尾巴','right',NULL,2,'2025-11-07 16:30:24'),
-(146,23,'肚皮','right',NULL,3,'2025-11-07 16:30:24'),
-(147,23,'衣裳','right',NULL,4,'2025-11-07 16:30:24'),
-(148,23,'脑袋','right',NULL,5,'2025-11-07 16:30:24'),
-(149,24,'一对','left',159,1,'2025-11-07 16:34:22'),
-(150,24,'一只','left',158,2,'2025-11-07 16:34:22'),
-(151,24,'一条','left',160,3,'2025-11-07 16:34:22'),
-(152,24,'一朵','left',162,4,'2025-11-07 16:34:22'),
-(153,24,'一滴','left',157,5,'2025-11-07 16:34:22'),
-(154,24,'一片','left',NULL,6,'2025-11-07 16:34:22'),
-(155,24,'一座','left',163,7,'2025-11-07 16:34:23'),
-(156,24,'一台','left',161,8,'2025-11-07 16:34:23'),
-(157,24,'雪花','right',NULL,1,'2025-11-07 16:34:23'),
-(158,24,'水','right',NULL,2,'2025-11-07 16:34:23'),
-(159,24,'乌龟','right',NULL,3,'2025-11-07 16:34:23'),
-(160,24,'眼睛','right',NULL,4,'2025-11-07 16:34:23'),
-(161,24,'后腿','right',NULL,5,'2025-11-07 16:34:24'),
-(162,24,'机器','right',NULL,6,'2025-11-07 16:34:24'),
-(163,24,'荷花','right',NULL,7,'2025-11-07 16:34:24'),
-(164,24,'房屋','right',NULL,8,'2025-11-07 16:34:24'),
-(165,25,'连忙','left',171,1,'2025-11-07 16:36:17'),
-(166,25,'平常','left',169,2,'2025-11-07 16:36:17'),
-(167,25,'温和','left',NULL,3,'2025-11-07 16:36:17'),
-(168,25,'帮助','left',170,4,'2025-11-07 16:36:17'),
-(169,25,'和善','right',NULL,1,'2025-11-07 16:36:17'),
-(170,25,'平时','right',NULL,2,'2025-11-07 16:36:17'),
-(171,25,'帮忙','right',NULL,3,'2025-11-07 16:36:17'),
-(172,25,'急忙','right',NULL,4,'2025-11-07 16:36:17'),
-(173,26,'粗心','left',178,1,'2025-11-07 16:37:26'),
-(174,26,'离开','left',179,2,'2025-11-07 16:37:26'),
-(175,26,'温和','left',177,3,'2025-11-07 16:37:26'),
-(176,26,'发动','left',NULL,4,'2025-11-07 16:37:27'),
-(177,26,'停止','right',NULL,1,'2025-11-07 16:37:27'),
-(178,26,'暴躁','right',NULL,2,'2025-11-07 16:37:27'),
-(179,26,'细心','right',NULL,3,'2025-11-07 16:37:27'),
-(180,26,'回来','right',NULL,4,'2025-11-07 16:37:27'),
-(181,27,'《小蝌蚪找妈妈》','left',185,1,'2025-11-07 16:47:47'),
-(182,27,'《我是什么》','left',184,2,'2025-11-07 16:47:47'),
-(183,27,'《植物妈妈有办法》','left',NULL,3,'2025-11-07 16:47:48'),
-(184,27,'要学会仔细观察','right',NULL,1,'2025-11-07 16:47:48'),
-(185,27,'要保护水资源','right',NULL,2,'2025-11-07 16:47:48'),
-(186,27,'要学会独立生活，勇敢探索','right',NULL,3,'2025-11-07 16:47:48'),
-(187,28,'叶儿','left',190,1,'2025-11-07 16:49:22'),
-(188,28,'松树','left',191,2,'2025-11-07 16:49:22'),
-(189,28,'满院','left',NULL,3,'2025-11-07 16:49:22'),
-(190,28,'香','right',NULL,1,'2025-11-07 16:49:23'),
-(191,28,'红','right',NULL,2,'2025-11-07 16:49:23'),
-(192,28,'青','right',NULL,3,'2025-11-07 16:49:23'),
-(199,30,'一方','left',206,1,'2025-11-07 16:52:12'),
-(200,30,'一行','left',207,2,'2025-11-07 16:52:12'),
-(201,30,'一丛','left',205,3,'2025-11-07 16:52:12'),
-(202,30,'一处','left',NULL,4,'2025-11-07 16:52:12'),
-(203,30,'一座','left',204,5,'2025-11-07 16:52:12'),
-(204,30,'港湾','right',NULL,1,'2025-11-07 16:52:12'),
-(205,30,'花园','right',NULL,2,'2025-11-07 16:52:12'),
-(206,30,'翠竹','right',NULL,3,'2025-11-07 16:52:13'),
-(207,30,'鱼塘','right',NULL,4,'2025-11-07 16:52:13'),
-(208,30,'垂柳','right',NULL,5,'2025-11-07 16:52:13'),
-(209,31,'笑','left',217,1,'2025-11-07 16:55:23'),
-(210,31,'兴','left',216,2,'2025-11-07 16:55:23'),
-(211,31,'黑','left',215,3,'2025-11-07 16:55:23'),
-(212,31,'水','left',219,4,'2025-11-07 16:55:24'),
-(213,31,'胖','left',218,5,'2025-11-07 16:55:24'),
-(214,31,'干','left',NULL,6,'2025-11-07 16:55:24'),
-(215,31,'巴巴','right',NULL,1,'2025-11-07 16:55:24'),
-(216,31,'压压','right',NULL,2,'2025-11-07 16:55:24'),
-(217,31,'冲冲','right',NULL,3,'2025-11-07 16:55:24'),
-(218,31,'盈盈','right',NULL,4,'2025-11-07 16:55:25'),
-(219,31,'乎乎','right',NULL,5,'2025-11-07 16:55:25'),
-(220,31,'汪汪','right',NULL,6,'2025-11-07 16:55:25'),
-(221,32,'丛','left',229,1,'2025-11-07 17:00:18'),
-(222,32,'从','left',228,2,'2025-11-07 17:00:18'),
-(223,32,'处','left',231,3,'2025-11-07 17:00:19'),
-(224,32,'外','left',NULL,4,'2025-11-07 17:00:19'),
-(225,32,'休','left',227,5,'2025-11-07 17:00:19'),
-(226,32,'体','left',230,6,'2025-11-07 17:00:19'),
-(227,32,'面','right',NULL,1,'2025-11-07 17:00:19'),
-(228,32,'息','right',NULL,2,'2025-11-07 17:00:19'),
-(229,32,'前','right',NULL,3,'2025-11-07 17:00:19'),
-(230,32,'林','right',NULL,4,'2025-11-07 17:00:19'),
-(231,32,'身','right',NULL,5,'2025-11-07 17:00:19'),
-(232,32,'到','right',NULL,6,'2025-11-07 17:00:20'),
-(233,33,'睛','left',240,1,'2025-11-07 17:06:05'),
-(234,33,'晴','left',241,2,'2025-11-07 17:06:05'),
-(235,33,'洋','left',242,3,'2025-11-07 17:06:05'),
-(236,33,'样','left',243,4,'2025-11-07 17:06:05'),
-(237,33,'哪','left',NULL,5,'2025-11-07 17:06:06'),
-(238,33,'那','left',239,6,'2025-11-07 17:06:06'),
-(239,33,'来的','right',NULL,1,'2025-11-07 17:06:06'),
-(240,33,'边','right',NULL,2,'2025-11-07 17:06:06'),
-(241,33,'眼','right',NULL,3,'2025-11-07 17:06:06'),
-(242,33,'空','right',NULL,4,'2025-11-07 17:06:06'),
-(243,33,'气','right',NULL,5,'2025-11-07 17:06:06'),
-(244,33,'子','right',NULL,6,'2025-11-07 17:06:06'),
-(245,34,'教书','left',NULL,1,'2025-11-07 17:10:28'),
-(246,34,'教室','left',254,2,'2025-11-07 17:10:28'),
-(247,34,'淹没','left',253,3,'2025-11-07 17:10:29'),
-(248,34,'没有','left',259,4,'2025-11-07 17:10:29'),
-(249,34,'行为','left',256,5,'2025-11-07 17:10:29'),
-(250,34,'因为','left',255,6,'2025-11-07 17:10:29'),
-(251,34,'种子','left',257,7,'2025-11-07 17:10:29'),
-(252,34,'种树','left',258,8,'2025-11-07 17:10:29'),
-(253,34,'jiāo','right',NULL,1,'2025-11-07 17:10:29'),
-(254,34,'mò','right',NULL,2,'2025-11-07 17:10:29'),
-(255,34,'jiào','right',NULL,3,'2025-11-07 17:10:30'),
-(256,34,'wèi','right',NULL,4,'2025-11-07 17:10:30'),
-(257,34,'wéi','right',NULL,5,'2025-11-07 17:10:31'),
-(258,34,'zhǒng','right',NULL,6,'2025-11-07 17:10:31'),
-(259,34,'zhòng','right',NULL,7,'2025-11-07 17:10:31'),
-(260,34,'méi','right',NULL,8,'2025-11-07 17:10:31'),
-(289,29,'熊猫','left',NULL,1,'2025-11-08 10:48:55'),
-(290,29,'雄鹰','left',NULL,2,'2025-11-08 10:48:55'),
-(291,29,'春风','left',NULL,3,'2025-11-08 10:48:55'),
-(292,29,'飞翔','right',NULL,1,'2025-11-08 10:48:55'),
-(293,29,'嬉戏','right',NULL,2,'2025-11-08 10:48:56'),
-(294,29,'吹','right',NULL,3,'2025-11-08 10:48:56');
-
-/*Table structure for table `questions` */
-
-DROP TABLE IF EXISTS `questions`;
-
-CREATE TABLE `questions` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '题目标题',
-  `description` text COLLATE utf8mb4_unicode_ci COMMENT '题目说明',
-  `difficulty_level` enum('easy','medium','hard','error_prone') COLLATE utf8mb4_unicode_ci DEFAULT 'easy' COMMENT '难度等级：easy=简单, medium=中等, hard=困难, error_prone=易错题',
-  `grade` enum('grade1','grade2','grade3','grade4','grade5','grade6') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'grade1' COMMENT '年级：grade1=一年级, grade2=二年级, grade3=三年级, grade4=四年级, grade5=五年级, grade6=六年级',
-  `subject` enum('math','chinese','english','science') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'math' COMMENT '科目：math=数学, chinese=语文, english=英语, science=科学',
-  `hint_enabled` tinyint(1) NOT NULL DEFAULT '0',
-  `hint_text` text COLLATE utf8mb4_unicode_ci,
-  `image_enabled` tinyint(1) NOT NULL DEFAULT '0',
-  `image_url` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `draft_enabled` tinyint(1) NOT NULL DEFAULT '0',
-  `poem_id` int(11) DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1' COMMENT '是否启用',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `question_type` enum('matching','choice','poem_fill','fill_blank') COLLATE utf8mb4_unicode_ci NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_grade` (`grade`),
-  KEY `idx_subject` (`subject`),
-  KEY `fk_questions_poem` (`poem_id`),
-  CONSTRAINT `fk_questions_poem` FOREIGN KEY (`poem_id`) REFERENCES `poems` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=87 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目主表';
-
-/*Data for the table `questions` */
-
-insert  into `questions`(`id`,`title`,`description`,`difficulty_level`,`grade`,`subject`,`hint_enabled`,`hint_text`,`image_enabled`,`image_url`,`draft_enabled`,`poem_id`,`is_active`,`created_at`,`updated_at`,`question_type`) values 
-(16,'动物与食物','把动物和它们喜欢吃的食物连起来','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-21 18:20:37','2025-11-13 13:22:58','matching'),
-(17,'颜色与水果','把水果和它们的颜色连起来','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-21 18:20:38','2025-11-13 13:22:58','matching'),
-(18,'数字与数量','把数字和对应数量的物品连起来','medium','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-21 18:20:38','2025-11-13 13:22:58','matching'),
-(19,'几个几与几和几','能正确区分几个几、几和几相加、相乘','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-22 17:29:56','2025-11-13 13:22:58','matching'),
-(20,'计算下面的数学表达式: \\(2x + 3 = 7\\)','选择正确的答案','medium','grade2','math',0,NULL,0,NULL,0,NULL,0,'2025-10-23 10:51:24','2025-11-13 13:22:58','choice'),
-(21,'求下列方程的解: \\(x^2 - 4 = 0\\)','选择所有正确的答案','hard','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-10-23 10:51:24','2025-11-14 14:18:01','choice'),
-(22,'动词搭配','动词+名词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:28:12','2025-11-13 13:22:58','matching'),
-(23,'形容词搭配','形容词+名词(什么样的什么)','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:30:22','2025-11-13 13:22:58','matching'),
-(24,'量词搭配','选择合适的量词来称呼后面的名词，量词+名词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:34:22','2025-11-13 13:22:58','matching'),
-(25,'近义词','选择意思相近的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:36:17','2025-11-13 13:22:58','matching'),
-(26,'反义词','选择意思相反的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:37:26','2025-11-13 13:22:58','matching'),
-(27,'课文告诉我们什么道理','以下三篇文章分别告诉我们什么道理呢？','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:47:47','2025-11-13 13:22:58','matching'),
-(28,'形容词搭配','用准确的形容词来形容一个事物','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:49:22','2025-11-13 13:22:58','matching'),
-(29,'动作描写','准确描述事物的动作','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:50:28','2025-11-13 13:22:58','matching'),
-(30,'量词搭配','用准确的量词称呼名词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:52:12','2025-11-13 13:22:58','matching'),
-(31,'ABB搭配','ABB式叠词','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 16:55:22','2025-11-13 13:22:58','matching'),
-(32,'形近字辨析','形近字辨析，左右搭配形成词语即可，可以左边字在前，也可以右边字在前','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 17:00:18','2025-11-13 13:22:58','matching'),
-(33,'形近字辨析','把字看仔细','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 17:06:05','2025-11-13 13:22:58','matching'),
-(34,'多音字辨析','把音读准','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-07 17:10:28','2025-11-13 13:22:58','matching'),
-(44,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:12:22','2025-11-13 13:22:58','matching'),
-(45,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:13:36','2025-11-13 13:22:58','matching'),
-(46,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:14:33','2025-11-13 13:22:58','matching'),
-(47,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:15:59','2025-11-13 13:22:58','matching'),
-(48,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:17:53','2025-11-13 13:22:58','matching'),
-(49,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:19:49','2025-11-13 13:22:58','matching'),
-(50,'量词搭配','量词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 15:21:06','2025-11-13 13:22:58','matching'),
-(51,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:23:05','2025-11-13 13:22:58','matching'),
-(52,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:25:30','2025-11-13 13:22:58','matching'),
-(53,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:28:30','2025-11-13 13:22:58','matching'),
-(54,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:31:41','2025-11-13 13:22:58','matching'),
-(55,'形近字辨析','形近字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:33:31','2025-11-13 13:22:58','matching'),
-(56,'多音字辨析','读准字音','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:35:50','2025-11-13 13:22:58','matching'),
-(57,'多音字辨析','读准字音','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:37:43','2025-11-13 13:22:58','matching'),
-(58,'多音字辨析','多音字辨析','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:41:28','2025-11-13 13:22:58','matching'),
-(59,'近义词','选择意思相近的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:43:50','2025-11-13 13:22:58','matching'),
-(60,'近义词','选择意思相近的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:46:01','2025-11-13 13:22:58','matching'),
-(61,'反义词','选择意思相反的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:49:00','2025-11-13 13:22:58','matching'),
-(62,'反义词','选择意思相反的词语','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 16:51:28','2025-11-13 13:22:58','matching'),
-(63,'俗语搭配','俗语搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 18:36:11','2025-11-13 13:22:58','matching'),
-(64,'动词搭配','动词搭配','easy','grade2','chinese',0,NULL,0,NULL,0,NULL,0,'2025-11-09 18:40:02','2025-11-13 13:22:58','matching'),
-(66,'梅花','梅花','easy','grade2','chinese',0,NULL,0,NULL,0,1,0,'2025-11-13 13:19:20','2025-11-14 14:14:14','poem_fill'),
-(67,'小儿垂钓','小儿垂钓','easy','grade2','chinese',0,NULL,0,NULL,0,2,0,'2025-11-13 13:37:32','2025-11-13 21:04:13','poem_fill'),
-(68,'谁比谁多','小明看了30页书，比弟弟少看6页，问弟弟看了多少页？','easy','grade2','math',1,'求谁就看谁是多还是少，多就加，少就减',0,NULL,1,NULL,0,'2025-11-13 19:32:49','2025-12-21 14:40:26','choice'),
-(69,'代词辨析','正确使用代词','easy','grade2','english',0,'',0,'',0,NULL,1,'2025-11-15 17:50:17','2025-12-21 14:27:44','matching'),
-(70,'代词辨析','正确使用代词','easy','grade2','english',0,NULL,0,NULL,0,NULL,0,'2025-11-15 17:52:02','2025-11-25 22:19:22','matching'),
-(71,'看书问题','小明看一本书，每天看5页，看了6天，问第7天要从第几页开始看？','easy','grade2','math',1,'注意前面几天一共看了多少页？',0,NULL,1,NULL,0,'2025-11-15 19:06:05','2025-11-25 22:19:22','choice'),
-(72,'have got和has got','（） he got a book?','easy','grade2','english',1,'注意三单',0,NULL,0,NULL,0,'2025-11-16 17:04:14','2025-11-25 22:19:22','choice'),
-(73,'THere be有','There () two books on the table.','easy','grade2','english',1,'注意单数还是复数',0,NULL,0,NULL,0,'2025-11-16 17:07:28','2025-11-25 22:19:22','choice'),
-(74,'3乘5','3\\(\\times\\)5表示{_0}个{_1}相加，口诀是{_2}','easy','grade1','math',0,NULL,0,NULL,0,NULL,0,'2025-11-25 22:14:10','2025-12-20 19:15:48','fill_blank'),
-(75,'兔妈妈采蘑菇','兔妈妈采了一篮蘑菇。蘑菇的数量比40多，比50少。平均分给几只小兔，每只小兔分得的数量刚好和小兔的只数同样多。兔妈妈采了{_0}个蘑菇，平均分给{_1}只小兔。','error_prone','grade2','math',0,'',0,'',1,NULL,1,'2025-12-20 19:20:44','2025-12-20 19:21:06','fill_blank'),
-(76,'多音字：mu','多音字辨析，连一连','error_prone','grade2','chinese',0,'',0,'',0,NULL,1,'2025-12-21 11:33:37','2025-12-21 11:36:09','matching'),
-(77,'看电影','某电影院的一个影厅有9排座位，每排有5个座位。二（1）班共有44名学生，2位老师要带他们一起去看电影，请问电影院能坐得下吗？','easy','grade2','math',0,NULL,0,NULL,0,NULL,0,'2025-12-21 14:08:27','2025-12-21 15:11:06','choice'),
-(78,'等量代换','在原始社会，人们使用以物易物的方式交换自己所需要的物资。比如，1头牛可以换4只羊，1只羊可以换3只兔子。想一想，24只兔子可以换{_0}头牛？','easy','grade2','math',1,'先用兔子换羊，再用羊换牛',0,NULL,1,NULL,0,'2025-12-21 14:11:05','2025-12-21 15:10:13','fill_blank'),
-(79,'归一问题','二年级同学参加合唱比赛，要求同学们按照“5男4女”每9人站一排。女生共有32人， 男生共有{_0}人','medium','grade2','math',1,'先求出有几排',0,NULL,1,NULL,1,'2025-12-21 14:23:43','2025-12-21 14:23:43','fill_blank'),
-(80,'数位问题','有一个两位数，两个数位上的数之和为13，个位比十位大3，这个两位数是{_0}','hard','grade2','math',0,NULL,0,NULL,1,NULL,1,'2025-12-21 14:26:51','2025-12-21 14:26:51','fill_blank'),
-(81,'错中求解','一道除法题，除数是9，小乐把被除数十位上的数字和个位上的数字看颠倒了，结果除得的商是4。这道题正确的商应该是{_0}?','hard','grade2','math',0,NULL,0,NULL,1,NULL,1,'2025-12-21 14:58:20','2025-12-21 14:58:20','fill_blank'),
-(82,'乘法口诀','一些苹果，比20多，比25少，正好放了4盘，每盘一样多，这些苹果可能有{_0}个，每盘有{_1}个。','hard','grade2','math',0,NULL,0,NULL,1,NULL,1,'2025-12-21 15:00:53','2025-12-21 15:00:53','fill_blank'),
-(83,'剪绳子','一段12米长的绳子，剪了3次，平均每段长{_0}米。','medium','grade2','math',1,'先求剪成了几段',0,NULL,1,NULL,0,'2025-12-21 15:02:45','2025-12-21 15:10:17','fill_blank'),
-(84,'绳子对折','一根绳子对折再对折后，量得它的长是3厘米，这根绳子原来长{_0}厘米。','hard','grade2','math',0,NULL,0,NULL,1,NULL,0,'2025-12-21 15:04:37','2025-12-21 15:10:19','fill_blank'),
-(85,'简单乘法','动物园观光车乘坐票每人4元，红红和5个好朋友乘坐，一共要花{_0}元。','medium','grade2','math',1,'想一想一共有几个人',0,NULL,1,NULL,0,'2025-12-21 15:06:12','2025-12-21 15:10:21','fill_blank'),
-(86,'绳子对折','一根绳子长48厘米，对折，对折再对折后，每段长{_0}厘米。','medium','grade2','math',0,NULL,0,NULL,1,NULL,0,'2025-12-21 15:07:49','2025-12-21 15:10:22','fill_blank');
-
-/*Table structure for table `user_answers` */
-
-DROP TABLE IF EXISTS `user_answers`;
-
-CREATE TABLE `user_answers` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户标识（可以是设备ID或用户名）',
-  `question_id` int(11) NOT NULL COMMENT '题目ID',
-  `is_correct` tinyint(1) NOT NULL COMMENT '是否答对',
-  `attempt_count` int(11) DEFAULT '1' COMMENT '尝试次数',
-  `completed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_user_id` (`user_id`),
-  KEY `idx_question_id` (`question_id`),
-  CONSTRAINT `user_answers_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='答题记录表';
-
-/*Data for the table `user_answers` */
-
-/*Table structure for table `word_plans` */
-
-DROP TABLE IF EXISTS `word_plans`;
-
-CREATE TABLE `word_plans` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '计划名称',
-  `description` text COLLATE utf8mb4_unicode_ci COMMENT '计划描述',
-  `mode` enum('flash-card','spelling') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'flash-card' COMMENT '答题模式',
-  `status` enum('active','inactive') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'inactive' COMMENT '启用状态',
-  `target_word_count` int(11) NOT NULL DEFAULT '10' COMMENT '目标单词数量',
-  `daily_word_count` int(11) NOT NULL DEFAULT '5' COMMENT '每日学习单词数量',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-/*Data for the table `word_plans` */
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
